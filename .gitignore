@@ -1,0 +1,8 @@
+/node_modules
+/.idea
+/.vscode
+/dist
+/.husky
+/build
+/.DS_Store
+yarn.lock
