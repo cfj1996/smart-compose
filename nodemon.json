@@ -1,0 +1,8 @@
+{
+  "restartable": "rs",
+  "verbose": true,
+  "watch": ["src"],
+  "delay": "1000",
+  "exec": "yarn build",
+  "ext": "ts"
+}

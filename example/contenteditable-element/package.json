@@ -1,0 +1,12 @@
+{
+  "name": "contenteditable-element",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "yarn link smart-compose && vite"
+  },
+  "devDependencies": {
+    "vite": "^5.0.12"
+  }
+}

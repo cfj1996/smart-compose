@@ -4,28 +4,20 @@
     "browser": true,
     "es2021": true
   },
-  "extends": [
-    "airbnb-base",
-    "airbnb-typescript/base",
-    "prettier"
-  ],
-  "overrides": [
-  ],
-  "settings": {
-  },
+  "extends": ["airbnb-base", "airbnb-typescript/base", "prettier"],
+  "overrides": [],
+  "settings": {},
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "project": "./tsconfig.json",
     "ecmaVersion": "latest",
     "sourceType": "module"
   },
-  "plugins": [
-    "@typescript-eslint"
-  ],
+  "plugins": ["@typescript-eslint"],
   "rules": {
     "import/prefer-default-export": "off",
     "func-names": ["error", "as-needed"],
-    "import/extensions":  "off",
+    "import/extensions": "off",
     "@typescript-eslint/no-useless-constructor": "off"
   }
 }

@@ -1,30 +1,24 @@
 {
-  "name": "vite-vanilla-ts-lib-starter",
+  "name": "smart-compose",
   "private": true,
-  "version": "0.0.2",
-  "main": "./dist/vite-vanilla-ts-lib-starter.cjs",
-  "module": "./dist/vite-vanilla-ts-lib-starter.mjs",
-  "exports": {
-    ".": {
-      "require": "./dist/vite-vanilla-ts-lib-starter.cjs",
-      "import": "./dist/vite-vanilla-ts-lib-starter.mjs"
-    },
-    "./dist/": {
-      "import": "./dist/",
-      "require": "./dist/"
-    }
-  },
+  "version": "0.0.1",
+  "main": "./dist/smart-compose.cjs",
+  "module": "./dist/smart-compose.mjs",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "dev": "vite --host",
+    "watch": "nodemon",
     "build": "rimraf build/**/* && tsc && vite build && dts-bundle-generator --config ./dts-bundle-generator.config.ts && copyfiles ./package.json build",
     "test": "vitest",
+    "unlink": "cd build && yarn unlink",
+    "link": "cd build && yarn link",
     "test:coverage": "vitest --coverage",
     "lint:scripts": "eslint . --ext .ts",
-    "format:scripts": "prettier . --write",
-    "format": "npm run format:scripts && npm run format:styles",
+    "format": "prettier . --write",
     "prepare": "husky install && husky set .husky/pre-commit 'npx lint-staged' && git add .husky/pre-commit",
     "uninstall-husky": "npm uninstall husky --no-save && git config --unset core.hooksPath && npx rimraf .husky"
+  },
+  "lint-staged": {
+    "./**/*.{ts,html,json}": "yarn format"
   },
   "devDependencies": {
     "@types/jsdom": "^21.1.6",
@@ -39,6 +33,7 @@
     "eslint-plugin-prettier": "^5.1.3",
     "husky": "^8.0.3",
     "lint-staged": "^15.2.0",
+    "nodemon": "^3.1.0",
     "postcss": "^8.4.33",
     "postcss-scss": "^4.0.9",
     "prettier": "^3.2.4",

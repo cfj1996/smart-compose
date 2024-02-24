@@ -1,1 +1,1 @@
-export const smartCompose = (a: number, b: number) => a + b;
+export const smartCompose = (a: number, b: number) => a + b + 1;
