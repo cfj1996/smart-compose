@@ -1,7 +1,21 @@
 import "./style.css";
-import { smartCompose } from "smart-compose";
+import { SmartCompose } from "smart-compose";
 
-const sum = smartCompose(1, 1);
-const textarea = document.querySelector("#textarea") as HTMLInputElement;
-
-textarea.value = sum.toString();
+const textarea = document.querySelector(".textarea") as HTMLTextAreaElement;
+new SmartCompose({
+  el: textarea,
+  getCompletionValue: value =>
+    fetch("/api/smartCompose", {
+      headers: {
+        "content-type": "application/json",
+      },
+      method: "post",
+      body: JSON.stringify({
+        text: value,
+      }),
+    })
+      .then(response => response.json())
+      .then(res => {
+        return res.completion as string;
+      }),
+});

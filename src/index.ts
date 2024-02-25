@@ -1,1 +1,1 @@
-export { smartCompose } from "./smart-compose";
+export { SmartCompose } from "./smart-compose";

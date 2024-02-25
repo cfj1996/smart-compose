@@ -6,6 +6,7 @@
   "module": "./dist/smart-compose.mjs",
   "types": "./dist/index.d.ts",
   "scripts": {
+    "devServer": "docker run -p 8000:80 --rm docker.io/sheimi/fe-interview-be:v0.1",
     "watch": "nodemon",
     "build": "rimraf build/**/* && tsc && vite build && dts-bundle-generator --config ./dts-bundle-generator.config.ts && copyfiles ./package.json build",
     "test": "vitest",
