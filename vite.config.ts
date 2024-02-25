@@ -14,11 +14,10 @@ const getPackageNameCamelCase = () => {
     throw new Error("Name property in package.json is missing.");
   }
 };
-type FormatType = "es" | "cjs" | "iife";
+type FormatType = "es" | "umd";
 const fileName: Record<FormatType, string> = {
   es: `${getPackageName()}.mjs`,
-  cjs: `${getPackageName()}.cjs`,
-  iife: `${getPackageName()}.iife.js`,
+  umd: `${getPackageName()}.js`,
 };
 
 const formats = Object.keys(fileName) as Array<keyof typeof fileName>;
@@ -27,6 +26,7 @@ module.exports = defineConfig({
   base: "./",
   build: {
     outDir: "./build/dist",
+    sourcemap: true,
     lib: {
       entry: path.resolve(__dirname, "src/index.ts"),
       name: getPackageNameCamelCase(),

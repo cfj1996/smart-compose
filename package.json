@@ -2,7 +2,7 @@
   "name": "smart-compose",
   "private": true,
   "version": "0.0.1",
-  "main": "./dist/smart-compose.cjs",
+  "main": "./dist/smart-compose.js",
   "module": "./dist/smart-compose.mjs",
   "types": "./dist/index.d.ts",
   "scripts": {
