@@ -1,11 +1,15 @@
-import { findEndNode, insetAfter, removeNode } from "@/utils";
+import { findEndNode, gerEndContainer, insetAfter, removeNode } from "@/utils";
 
 export class SmartCompose {
   mirrorDom: HTMLElement | undefined;
+
   mode: "TEXTAREA" | "CONTENTEDITABLE";
-  _valueState = "";
-  _completionValueState = "";
-  _lastReqText = "";
+
+  valueState = "";
+
+  completionValueState = "";
+
+  lastReqText = "";
 
   constructor(
     private config: {
@@ -30,24 +34,23 @@ export class SmartCompose {
   // 渲染提示
   renderCompletion() {
     if (this.mode === "TEXTAREA") {
-      const textNode = document.createTextNode(this._completionValueState);
+      const textNode = document.createTextNode(this.completionValueState);
       if (this.mirrorDom!.childNodes[1]) {
         this.mirrorDom!.replaceChild(textNode, this.mirrorDom!.childNodes[1]);
       } else {
         this.mirrorDom?.append(textNode);
       }
       this.syncScroll();
-    } else if (this._completionValueState) {
+    } else if (this.completionValueState) {
       if (this.mirrorDom) {
-        this.mirrorDom.innerHTML = this._completionValueState;
+        this.mirrorDom.innerHTML = this.completionValueState;
       } else {
-        const endContainer =
-          this.gerEndContainer() || findEndNode(this.config.el);
+        const endContainer = gerEndContainer() || findEndNode(this.config.el);
         const textNodeBox = document.createElement("span");
         textNodeBox.style.color = "rgb(117, 117, 117)";
         textNodeBox.style.whiteSpace = "pre-wrap";
         textNodeBox.dataset.isCompletion = "1";
-        textNodeBox.innerHTML = this._completionValueState;
+        textNodeBox.innerHTML = this.completionValueState;
         console.log("endContainer", endContainer?.parentNode);
         insetAfter(textNodeBox, endContainer);
         this.mirrorDom = this.config.el.querySelector(
@@ -71,7 +74,7 @@ export class SmartCompose {
       this.mirrorDom = document.createElement("div") as HTMLDivElement;
     }
     this.setMirrorDomStyle();
-    this.mirrorDom!.innerHTML = `<span style="visibility: hidden;">${this._valueState}</span>`;
+    this.mirrorDom!.innerHTML = `<span style="visibility: hidden;">${this.valueState}</span>`;
     if (!this.mirrorDom.parentNode) {
       this.config.el.parentNode!.insertBefore(this.mirrorDom, this.config.el);
     }
@@ -79,14 +82,14 @@ export class SmartCompose {
   }
 
   setValueState(value: string) {
-    this._valueState = value;
+    this.valueState = value;
     if (this.mode === "TEXTAREA") {
       this.renderMirror();
     }
   }
 
   setCompletionValueState(completionValue: string) {
-    this._completionValueState = completionValue;
+    this.completionValueState = completionValue;
     this.renderCompletion();
   }
 
@@ -134,13 +137,13 @@ export class SmartCompose {
 
   // 结尾是否是换行
   get isLineEnd() {
-    return /\n$/.test(this._valueState);
+    return /\n$/.test(this.valueState);
   }
 
   // 截取\n . 。; ；后面的字符串
   get lineText() {
     return (
-      this._valueState
+      this.valueState
         .split(/(\n|\.|。|;|；)/)
         .pop()
         ?.trim() || ""
@@ -151,8 +154,8 @@ export class SmartCompose {
   request() {
     const text = this.lineText;
     this.setCompletionValueState("");
-    if (!text || this._lastReqText === text) return;
-    this._lastReqText = text;
+    if (!text || this.lastReqText === text) return;
+    this.lastReqText = text;
     this.config.getCompletionValue(text).then(res => {
       if (text === this.lineText && this.lineText) {
         this.setCompletionValueState(res);
@@ -171,13 +174,13 @@ export class SmartCompose {
 
   // 选取
   useCompletionValue() {
-    if (this._completionValueState) {
+    if (this.completionValueState) {
       if (this.mode === "TEXTAREA") {
-        const newValue = this._valueState + this._completionValueState;
+        const newValue = this.valueState + this.completionValueState;
         (this.config.el as HTMLTextAreaElement).value = newValue;
         this.setValueState(newValue);
       } else {
-        const textNode = document.createTextNode(this._completionValueState);
+        const textNode = document.createTextNode(this.completionValueState);
         this.mirrorDom?.parentNode!.replaceChild(textNode, this.mirrorDom);
       }
       this.setCompletionValueState("");
@@ -198,11 +201,11 @@ export class SmartCompose {
     // 按键tab 或者 右方向键 选取
     this.config.el.addEventListener("keydown", event => {
       console.log("event", event);
-      const keyCode = (event as KeyboardEvent).keyCode;
+      const { keyCode } = event as KeyboardEvent;
       if (
         (keyCode === 9 || keyCode === 39) &&
         this.hasCursorAtEnd() &&
-        this._completionValueState
+        this.completionValueState
       ) {
         event.preventDefault();
         this.useCompletionValue();
@@ -215,15 +218,13 @@ export class SmartCompose {
     if (node.parentNode === this.config.el) {
       if (node.parentNode?.lastChild === node) {
         return true;
-      } else {
-        return false;
-      }
-    } else {
-      if (node.parentNode) {
-        return this.hasLastChild(node.parentNode);
       }
       return false;
     }
+    if (node.parentNode) {
+      return this.hasLastChild(node.parentNode);
+    }
+    return false;
   }
 
   collapseToEnd() {
@@ -239,30 +240,15 @@ export class SmartCompose {
     }
   }
 
-  getPreviousSiblingText(node: Node) {
-    let text = node.textContent || "";
-    let cuNode = node;
-    while (cuNode.previousSibling) {
-      text += cuNode.previousSibling!.textContent || "";
-      cuNode = cuNode.previousSibling;
-    }
-    return text;
-  }
-
-  gerEndContainer() {
-    const range = window.getSelection?.(); //创建range
-    return range?.getRangeAt(0)?.endContainer;
-  }
-
   bindEvent() {
-    this.config.el.addEventListener("keyup", () => {
-      const endContainer = this.gerEndContainer();
+    this.config.el.addEventListener("keyup", event => {
+      const endContainer = gerEndContainer();
       console.log("endContainer", endContainer);
       if (
         endContainer?.nodeType === 3 &&
         (this.mirrorDom ? endContainer?.nextSibling === this.mirrorDom : true)
       ) {
-        const keyCode = (event as KeyboardEvent).keyCode;
+        const { keyCode } = event as KeyboardEvent;
         console.log("keyCode", keyCode, endContainer?.textContent?.trim());
         if (keyCode === 9 || keyCode === 39 || keyCode === 13) {
           this.setValueState("");
@@ -277,8 +263,8 @@ export class SmartCompose {
       }
     });
     this.config.el.addEventListener("click", () => {
-      const text = this.gerEndContainer()?.textContent;
-      if (text && text === this._completionValueState) {
+      const text = gerEndContainer()?.textContent;
+      if (text && text === this.completionValueState) {
         this.useCompletionValue();
       } else {
         this.setCompletionValueState("");
@@ -288,8 +274,8 @@ export class SmartCompose {
     this.config.el.addEventListener(
       "keydown",
       event => {
-        const keyCode = (event as KeyboardEvent).keyCode;
-        if ((keyCode === 9 || keyCode === 39) && this._completionValueState) {
+        const { keyCode } = event as KeyboardEvent;
+        if ((keyCode === 9 || keyCode === 39) && this.completionValueState) {
           event.preventDefault();
           this.useCompletionValue();
         }
