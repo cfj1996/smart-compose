@@ -1,8 +1,11 @@
+import { findEndNode, insetAfter, removeNode } from "@/utils";
+
 export class SmartCompose {
   mirrorDom: HTMLElement | undefined;
   mode: "TEXTAREA" | "CONTENTEDITABLE";
   _valueState = "";
   _completionValueState = "";
+  _lastReqText = "";
 
   constructor(
     private config: {
@@ -38,25 +41,25 @@ export class SmartCompose {
       if (this.mirrorDom) {
         this.mirrorDom.innerHTML = this._completionValueState;
       } else {
-        const range = window.getSelection(); //创建range
-        const curNode = range?.getRangeAt(0)?.endContainer;
-        const textNodeBox = document.createElement("i");
+        const endContainer =
+          this.gerEndContainer() || findEndNode(this.config.el);
+        const textNodeBox = document.createElement("span");
         textNodeBox.style.color = "rgb(117, 117, 117)";
         textNodeBox.style.whiteSpace = "pre-wrap";
         textNodeBox.dataset.isCompletion = "1";
         textNodeBox.innerHTML = this._completionValueState;
-        curNode?.parentNode!.insertBefore(textNodeBox, null);
+        console.log("endContainer", endContainer?.parentNode);
+        insetAfter(textNodeBox, endContainer);
         this.mirrorDom = this.config.el.querySelector(
           `span[data-is-completion="1"]`
         ) as HTMLDivElement;
       }
     } else {
       const mirrorDom = this.config.el.querySelector(
-        `i[data-is-completion="1"]`
+        `span[data-is-completion="1"]`
       );
-      console.log("remove", mirrorDom);
       if (mirrorDom) {
-        mirrorDom?.parentNode?.removeChild(mirrorDom);
+        removeNode(mirrorDom);
       }
       this.mirrorDom = undefined;
     }
@@ -148,7 +151,8 @@ export class SmartCompose {
   request() {
     const text = this.lineText;
     this.setCompletionValueState("");
-    if (!text) return;
+    if (!text || this._lastReqText === text) return;
+    this._lastReqText = text;
     this.config.getCompletionValue(text).then(res => {
       if (text === this.lineText && this.lineText) {
         this.setCompletionValueState(res);
@@ -251,20 +255,20 @@ export class SmartCompose {
   }
 
   bindEvent() {
-    this.config.el.addEventListener("keyup", event => {
-      const keyCode = (event as KeyboardEvent).keyCode;
+    this.config.el.addEventListener("keyup", () => {
       const endContainer = this.gerEndContainer();
+      console.log("endContainer", endContainer);
       if (
-        endContainer &&
-        endContainer.textContent &&
-        (this.hasLastChild(endContainer) ||
-          endContainer?.nextSibling === this.mirrorDom)
+        endContainer?.nodeType === 3 &&
+        (this.mirrorDom ? endContainer?.nextSibling === this.mirrorDom : true)
       ) {
-        if (keyCode === 9 || keyCode === 39 || keyCode === 113) {
+        const keyCode = (event as KeyboardEvent).keyCode;
+        console.log("keyCode", keyCode, endContainer?.textContent?.trim());
+        if (keyCode === 9 || keyCode === 39 || keyCode === 13) {
           this.setValueState("");
           this.setCompletionValueState("");
         } else {
-          this.setValueState(this.getPreviousSiblingText(endContainer));
+          this.setValueState(endContainer?.textContent?.trim() || "");
           this.request();
         }
       } else {
