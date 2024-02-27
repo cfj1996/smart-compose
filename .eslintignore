@@ -130,3 +130,4 @@ dist
 
 *.test.js
 /rollup.config.js
+example

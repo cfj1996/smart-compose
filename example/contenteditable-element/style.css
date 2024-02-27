@@ -1,9 +1,13 @@
-
 #editor {
-    min-height: 500px;
-    border: 1px solid #616161;
+  min-height: 500px;
+  border: 1px solid #616161;
 }
-
-.tiptap  {
+blockquote {
+    /*margin-left: 0;*/
+}
+.ql-editor {
     min-height: 500px;
+}
+.tiptap {
+  min-height: 500px;
 }

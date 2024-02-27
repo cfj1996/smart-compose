@@ -8,23 +8,21 @@ import {
   bindEvents,
   findEndNode,
   getBox,
+  getScreenRect,
   insetAfter,
+  removeNode,
   setStyles,
 } from "@/utils";
 
-type ExitableOptions = {
-  el: HTMLDivElement | string;
+export type ExitableOptions = {
+  el: HTMLDivElement;
   getCompletionValue: (text: string) => Promise<string>;
   offset?: [number, number];
+  clearLine?: boolean;
 };
 
-function createCoverBox(
-  coverBox: HTMLDivElement,
-  contentBox: HTMLDivElement,
-  exitableEl: HTMLDivElement
-) {
-  const { top, left, height, width, contentWidth, contentHeight } =
-    getBox(exitableEl);
+function createCoverBox(coverBox: HTMLDivElement, exitableEl: HTMLDivElement) {
+  const { top, left, height, width } = getBox(exitableEl);
   setStyles(coverBox, {
     position: "absolute",
     zIndex: "1",
@@ -34,227 +32,236 @@ function createCoverBox(
     height: `${height}px`,
     overflow: "hidden",
     pointerEvents: "none",
-    border: "1px solid red",
   });
-  setStyles(contentBox, {
-    width: `${contentWidth || width}px`,
-    height: `${contentHeight || height}px`,
-    padding: window.getComputedStyle(exitableEl).padding,
-    margin: window.getComputedStyle(exitableEl).margin,
-    border: "1px solid yellow",
-  });
-  coverBox.appendChild(contentBox);
   insetAfter(coverBox, exitableEl);
 }
 
-function updateContent(
-  coverBox: HTMLDivElement,
-  contentBox: HTMLDivElement,
-  exitableEl: HTMLDivElement
-) {
-  const { top, left, height, width, contentWidth, contentHeight } =
-    getBox(exitableEl);
+function updateContent(coverBox: HTMLDivElement, exitableEl: HTMLDivElement) {
+  const { top, left, height, width } = getBox(exitableEl);
   setStyles(coverBox, {
     top: `${top}px`,
     left: `${left}px`,
     width: `${width}px`,
     height: `${height}px`,
   });
-  setStyles(contentBox, {
-    width: `${contentWidth || width}px`,
-    height: `${contentHeight || height}px`,
-  });
   coverBox.scrollTo(exitableEl.scrollLeft, exitableEl.scrollTop);
 }
 
 type Location = {
-  copePosition: {
-    left: number;
+  textTop: number;
+  textIndent: number;
+  position: {
     top: number;
-    height: number;
+    left: number;
+    width: number;
   };
   cssObj: CSSStyleDeclaration;
-  cloneSpan: Node;
+  cloneNode: Node;
 };
 
-function getCursorLocation(): Location | null {
+function getCursorLocation(exitableEl: HTMLDivElement): Location | null {
   const selection = window.getSelection();
   if (!selection) return null;
   const node = selection.getRangeAt(0).endContainer!;
   const span = document.createElement("span");
   if (node.nodeType === 3) {
     node.parentNode!.appendChild(span);
-    const { top, left, height } = getBox(span);
-    const cssObj = window.getComputedStyle(span);
-    const cloneSpan = span.cloneNode();
-    node.parentNode!.removeChild(span);
+    const spanParentNode = node.parentNode as HTMLElement;
+    const textTop = getScreenRect(span).top - getScreenRect(spanParentNode).top;
+    const textIndent =
+      getScreenRect(span).left - getScreenRect(spanParentNode).left;
+    const position = {
+      top:
+        getScreenRect(spanParentNode !== exitableEl ? spanParentNode : span)
+          .top - getScreenRect(exitableEl).top,
+      left:
+        getScreenRect(spanParentNode !== exitableEl ? spanParentNode : span)
+          .left - getScreenRect(exitableEl).left,
+      width: getScreenRect(
+        spanParentNode !== exitableEl ? spanParentNode : span
+      ).width,
+    };
+    spanParentNode.removeChild(span);
     return {
-      copePosition: {
-        left,
-        top,
-        height,
-      },
-      cssObj,
-      cloneSpan,
+      textTop,
+      textIndent,
+      position,
+      cssObj: window.getComputedStyle(
+        spanParentNode !== exitableEl ? spanParentNode : span
+      ),
+      cloneNode: spanParentNode.cloneNode(),
     };
   }
   node.appendChild(span);
-  const { top, left, height } = getBox(span);
-  const cssObj = window.getComputedStyle(span);
-  const cloneSpan = span.cloneNode();
-  node.removeChild(span);
+  const spanParentNode = node as HTMLElement;
+  const textTop = getScreenRect(span).top - getScreenRect(spanParentNode).top;
+  const textIndent =
+    getScreenRect(span).left - getScreenRect(spanParentNode).left;
+  const position = {
+    top:
+      getScreenRect(spanParentNode !== exitableEl ? spanParentNode : span).top -
+      getScreenRect(exitableEl).top,
+    left:
+      getScreenRect(spanParentNode !== exitableEl ? spanParentNode : span)
+        .left - getScreenRect(exitableEl).left,
+    width: getScreenRect(spanParentNode !== exitableEl ? spanParentNode : span)
+      .width,
+  };
+  spanParentNode.removeChild(span);
   return {
-    copePosition: {
-      left,
-      top,
-      height,
-    },
-    cssObj,
-    cloneSpan,
+    textTop,
+    textIndent,
+    position,
+    cssObj: window.getComputedStyle(
+      spanParentNode !== exitableEl ? spanParentNode : span
+    ),
+    cloneNode: spanParentNode.cloneNode(),
   };
 }
 
-function createTooltip(
-  contentBox: HTMLDivElement,
-  text: string,
-  position: {
-    left: number;
-    top: number;
-    height: number;
-  },
-  cssObj: CSSStyleDeclaration,
-  offset?: [number, number]
-) {
-  const { left, top, height } = position;
-  if (!text.trim()) {
-    while (contentBox.firstChild) {
-      contentBox.removeChild(contentBox.firstChild);
-    }
-  } else {
-    if (!contentBox.hasChildNodes()) {
-      contentBox.appendChild(document.createElement("p"));
-    }
-    const tooltip = contentBox.firstChild as HTMLDivElement;
-    setStyles(tooltip, {
-      position: "relative",
-      top: `${top - height + (offset?.[1] || 0)}px`,
-      left: "0px",
-      width: "100%",
-      textIndent: `${left + (offset?.[0] || 0)}px`,
-      font: cssObj.font,
-      color: "rgb(117, 117, 117)",
-      lineHeight: cssObj.lineHeight,
-      whiteSpace: cssObj.whiteSpace,
-      wordBreak: cssObj.wordBreak,
-    });
-    tooltip.innerHTML = text;
+function removeTooltip(coverBox: HTMLDivElement) {
+  const tooltip = coverBox.firstChild;
+  if (tooltip) {
+    removeNode(tooltip);
   }
 }
 
-function removeTooltip(contentBox: HTMLDivElement) {
-  while (contentBox.firstChild) {
-    contentBox.removeChild(contentBox.firstChild);
+function createTooltip(
+  text: string,
+  location: Location,
+  coverBox: HTMLDivElement,
+  offset?: [number, number]
+) {
+  const { textTop, textIndent, position, cssObj, cloneNode } = location;
+  const { top, left, width } = position;
+  console.log("top, left, width", top, left, width);
+  let tooltip = coverBox.firstChild;
+  if (!text.trim()) {
+    removeTooltip(coverBox);
   }
+  if (!tooltip) {
+    document.createElement(cloneNode.nodeName);
+    tooltip = coverBox.appendChild(document.createElement(cloneNode.nodeName));
+  }
+  (tooltip as HTMLDivElement).innerHTML = text;
+  setStyles(tooltip as HTMLDivElement, {
+    margin: "0",
+    position: "absolute",
+    top: `${top + (offset?.[1] || 0)}px`,
+    left: `${left}px`,
+    width: `${width}px`,
+    overflow: cssObj.overflow,
+    paddingTop: `${textTop}px`,
+    textIndent: `${textIndent + (offset?.[0] || 0)}px`,
+    font: cssObj.font,
+    color: "rgb(117, 117, 117)",
+    lineHeight: cssObj.lineHeight,
+    whiteSpace: cssObj.whiteSpace,
+    wordBreak: cssObj.wordBreak,
+  });
 }
 
 function useCompletionValue(
   exitableEl: HTMLElement,
-  contentBox: HTMLDivElement,
-  completionValue: string
+  completionValue: string,
+  coverBox: HTMLDivElement
 ) {
+  const endNode = findEndNode(exitableEl);
   const selection = window.getSelection();
-  const node = selection?.getRangeAt(0).endContainer!;
   const textNode = document.createTextNode(completionValue);
-  insetAfter(textNode, node);
-  removeTooltip(contentBox);
+  insetAfter(textNode, endNode);
+  removeTooltip(coverBox);
   exitableEl.focus();
   selection?.selectAllChildren(exitableEl);
   selection?.collapseToEnd();
 }
 
+const getEndContainerText = () => {
+  const selection = window.getSelection();
+  const node = selection?.getRangeAt(0)?.endContainer!;
+  return node.textContent || "";
+};
+
+const hasCursorend = (exitableEl: HTMLDivElement) => {
+  const endNode = findEndNode(exitableEl);
+  const selection = window.getSelection();
+  const node = selection?.getRangeAt(0)?.endContainer!;
+  if (!selection) {
+    return false;
+  }
+  if (!node) {
+    return false;
+  }
+  if (node.nodeType === 3 && endNode.textContent === node.textContent) {
+    return true;
+  }
+  if (node.nodeType === 1) {
+    return selection.focusOffset === node.childNodes.length;
+  }
+  return false;
+};
+
 export function SmartComposeExitable(options: ExitableOptions) {
-  const exitableEl =
-    typeof options.el === "string"
-      ? (document.querySelector(options.el) as HTMLDivElement)
-      : options.el;
-  if (!exitableEl) throw new Error("Invalid node");
-  if (exitableEl && exitableEl.contentEditable !== "true")
-    throw new Error("Invalid node");
+  const exitableEl = options.el;
   const coverBox = document.createElement("div");
-  const contentBox = document.createElement("div");
-  createCoverBox(coverBox, contentBox, exitableEl);
-  let location: Location | null = null;
+  createCoverBox(coverBox, exitableEl);
   let completionValue = "";
   const request = (text: string) =>
     options.getCompletionValue(text).then(res => ({
       requesttext: text,
       res,
     }));
+  let lasttext = "";
   bindEvents(exitableEl, {
-    input: () => {
-      const endNode = findEndNode(exitableEl);
-      const selection = window.getSelection();
-      const node = selection?.getRangeAt(0).endContainer!;
+    focus: () => {
+      lasttext = getEndContainerText();
+    },
+    blur() {
+      lasttext = "";
       completionValue = "";
-      if (
-        endNode.nodeType === 3 &&
-        node?.nodeType === 3 &&
-        endNode.textContent === node.textContent &&
-        node.textContent
-      ) {
-        console.log("node.textContent", node.textContent);
-        removeTooltip(contentBox);
-        const text = node.textContent;
-        request(text).then(data => {
-          if (data.requesttext === text) {
+      removeTooltip(coverBox);
+    },
+    input: () => {
+      const endSelectText = getEndContainerText();
+      completionValue = "";
+      if (hasCursorend(exitableEl) && endSelectText !== lasttext) {
+        removeTooltip(coverBox);
+        request(endSelectText).then(data => {
+          if (data.requesttext === lasttext) {
             completionValue = data.res;
-            updateContent(coverBox, contentBox, exitableEl);
-            location = getCursorLocation();
+            updateContent(coverBox, exitableEl);
+            const location = getCursorLocation(exitableEl);
             if (location) {
               createTooltip(
-                contentBox,
-                data.res,
-                location?.copePosition,
-                location?.cssObj,
+                options.clearLine ? data.res?.replace(/\n/g, "") : data.res,
+                location,
+                coverBox,
                 options.offset
               );
             }
           }
         });
       } else {
-        removeTooltip(contentBox);
+        removeTooltip(coverBox);
       }
+      lasttext = endSelectText;
     },
     keydown: (e: KeyboardEvent) => {
-      console.log("keyCode", e.keyCode);
-      const endNode = findEndNode(exitableEl);
-      const selection = window.getSelection();
-      const node = selection?.getRangeAt(0).endContainer!;
-      if (
-        e.keyCode === 9 &&
-        completionValue &&
-        endNode.nodeType === 3 &&
-        node?.nodeType === 3 &&
-        endNode.textContent === node.textContent &&
-        node.textContent
-      ) {
-        useCompletionValue(exitableEl, contentBox, completionValue);
+      if (e.keyCode === 13 || e.keyCode === 27) {
+        lasttext = "";
+        completionValue = "";
+        removeTooltip(coverBox);
+      }
+      if (e.keyCode === 9 && completionValue && hasCursorend(exitableEl)) {
+        useCompletionValue(exitableEl, completionValue, coverBox);
         completionValue = "";
         e.preventDefault();
       }
-      updateContent(coverBox, contentBox, exitableEl);
-      if (location) {
-        createTooltip(
-          contentBox,
-          completionValue,
-          location?.copePosition,
-          location?.cssObj,
-          options.offset
-        );
-      }
     },
     scroll: () => {
-      updateContent(coverBox, contentBox, exitableEl);
+      lasttext = "";
+      completionValue = "";
+      removeTooltip(coverBox);
     },
   });
 }

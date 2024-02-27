@@ -57,8 +57,15 @@ export const setStyles = (
     (el as HTMLDivElement).style[key as any] = value as any;
   });
 };
-
-export const getBox = (el: HTMLElement) => ({
+export type Box = {
+  contentHeight: number;
+  contentWidth: number;
+  width: number;
+  height: number;
+  top: number;
+  left: number;
+};
+export const getBox = (el: HTMLElement): Box => ({
   contentHeight: el.scrollHeight,
   contentWidth: el.scrollWidth,
   width: el.offsetWidth,
@@ -66,6 +73,10 @@ export const getBox = (el: HTMLElement) => ({
   top: el.offsetTop,
   left: el.offsetLeft,
 });
+
+export type Rect = DOMRect;
+export const getScreenRect = (el: HTMLElement): Rect =>
+  el.getBoundingClientRect();
 
 export const gerEndContainer = () => {
   const range = window.getSelection?.(); // 创建range
