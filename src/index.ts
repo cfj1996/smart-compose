@@ -7,7 +7,7 @@ import {
   SmartComposeExitable,
 } from "./smart-compose-exitable";
 
-export default function smrtCompose(
+export default function smartCompose(
   options: Omit<TextareaOptions | ExitableOptions, "el"> & {
     el: string | HTMLElement;
   }

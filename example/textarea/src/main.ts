@@ -1,5 +1,5 @@
 import "./style.css";
-import smrtCompose from "smart-compose";
+import smartCompose from "smart-compose";
 
 let i = 0;
 const textList = [
@@ -19,7 +19,7 @@ const getSmartCompose = (): Promise<string> => {
 };
 
 const textarea = document.querySelector(".textarea") as HTMLTextAreaElement;
-smrtCompose({
+smartCompose({
   el: textarea,
   getCompletionValue: getSmartCompose,
 });
